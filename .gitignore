@@ -1,0 +1,17 @@
+# Python / Flask
+__pycache__/
+*.pyc
+venv/
+.env
+backend/database/*.db
+
+# Node / Frontend
+node_modules/
+dist/
+build/
+.env.local
+
+# IDE / SO
+.vscode/
+.idea/
+.DS_Store
