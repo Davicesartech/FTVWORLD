@@ -81,6 +81,8 @@ class Partida(db.Model):
     status = db.Column(db.String(50))
     id_campeonato = db.Column(db.Integer)  # Chave estrangeira flexível
     id_dupla1 = db.Column(db.Integer)      # Chave estrangeira flexível
+    id_dupla2 = db.Column(db.Integer)      # Chave estrangeira flexível 
+    id_quadra = db.Column(db.Integer)      # Chave estrangeira flexível 
 
     def to_dict(self):
         data_dict = {c.name: getattr(self, c.name) for c in self.__table__.columns}
