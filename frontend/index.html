@@ -13,7 +13,6 @@
     <h1 class="text-xl font-bold tracking-wider">⚽ FUTWORLD</h1>
 
     <div class="flex items-center gap-3 flex-wrap">
-      <!-- Alternador de modo: CRUD x Relatórios -->
       <div class="bg-blue-800 rounded p-1 flex">
         <button id="btnModeCrud" onclick="changeMode('crud')"
           class="px-3 py-1 rounded text-sm font-semibold bg-blue-500">CRUD</button>
@@ -37,7 +36,6 @@
 
 <main class="container mx-auto mt-8 p-4">
 
-  <!-- ============ SEÇÃO CRUD (existente) ============ -->
   <section id="crudSection">
     <div class="flex justify-between items-center mb-6">
       <h2 id="pageTitle" class="text-2xl font-semibold text-gray-800 uppercase">Gerenciar Usuários</h2>
@@ -54,7 +52,6 @@
     </div>
   </section>
 
-  <!-- ============ SEÇÃO RELATÓRIOS (nova) ============ -->
   <section id="reportSection" class="hidden">
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-2xl font-semibold text-gray-800 uppercase">Relatórios</h2>
@@ -111,7 +108,6 @@
 <script>
 const API_BASE = "http://127.0.0.1:5000/api";
 
-// Definição dos campos de cada Model para construção dinâmica da UI
 const schemas = {
   usuarios: [
     { name: 'nome', label: 'Nome', type: 'text' },
@@ -170,7 +166,6 @@ const schemas = {
 
 let currentEntity = "usuarios";
 
-// ===================== MODO (CRUD x Relatórios) =====================
 function changeMode(mode) {
   const crudBtn = document.getElementById('btnModeCrud');
   const reportBtn = document.getElementById('btnModeReport');
@@ -195,7 +190,6 @@ function changeMode(mode) {
   }
 }
 
-// ===================== CRUD (existente) =====================
 function changeEntity() {
   currentEntity = document.getElementById("entitySelector").value;
   document.getElementById("pageTitle").innerText = "Gerenciar " + currentEntity;
@@ -245,194 +239,4 @@ function openModal(isEdit = false) {
 
   if (!isEdit) {
     document.getElementById("row_id").value = "";
-    document.getElementById("entityForm").reset();
-  }
-  document.getElementById("crudModal").classList.remove("hidden");
-}
-
-function closeModal() {
-  document.getElementById("crudModal").classList.add("hidden");
-}
-
-async function editRow(id) {
-  const res = await fetch(`${API_BASE}/${currentEntity}/${id}`);
-  const data = await res.json();
-  openModal(true);
-  document.getElementById("row_id").value = id;
-  schemas[currentEntity].forEach(f => {
-    let val = data[f.name];
-    if (f.type === 'datetime-local' && val) val = val.substring(0, 16);
-    document.getElementById(`field_${f.name}`).value = val !== null ? val : '';
-  });
-}
-
-async function saveData(e) {
-  e.preventDefault();
-  const id = document.getElementById("row_id").value;
-  const payload = {};
-  schemas[currentEntity].forEach(f => {
-    let val = document.getElementById(`field_${f.name}`).value;
-    if (f.type === 'number') val = val ? Number(val) : null;
-    payload[f.name] = val;
-  });
-
-  const method = id ? "PUT" : "POST";
-  const url = id ? `${API_BASE}/${currentEntity}/${id}` : `${API_BASE}/${currentEntity}`;
-
-  await fetch(url, {
-    method: method,
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  });
-
-  closeModal();
-  loadData();
-}
-
-async function deleteRow(id) {
-  if (confirm("Tem certeza que deseja remover este registro?")) {
-    await fetch(`${API_BASE}/${currentEntity}/${id}`, { method: "DELETE" });
-    loadData();
-  }
-}
-
-// ===================== RELATÓRIOS (novo) =====================
-// Cada relatório aponta para uma rota da API (Controller -> Service -> Repository -> procedure).
-// As colunas da tabela são geradas dinamicamente a partir do JSON retornado,
-// então não é preciso saber de antemão os nomes exatos das colunas de cada procedure.
-const reportConfigs = {
-  campeonatos_disponiveis: {
-    label: 'Campeonatos Disponíveis',
-    filters: [
-      { name: 'categoria', label: 'Categoria (opcional)', type: 'text', required: false },
-      { name: 'nivel', label: 'Nível (opcional)', type: 'text', required: false }
-    ],
-    buildUrl: (vals) => {
-      const params = new URLSearchParams();
-      if (vals.categoria) params.append('categoria', vals.categoria);
-      if (vals.nivel) params.append('nivel', vals.nivel);
-      const qs = params.toString();
-      return `${API_BASE}/relatorios/campeonatos-disponiveis${qs ? '?' + qs : ''}`;
-    }
-  },
-  ranking_duplas: {
-    label: 'Ranking de Duplas',
-    filters: [],
-    buildUrl: () => `${API_BASE}/relatorios/ranking-duplas`
-  },
-  inscritos_campeonato: {
-    label: 'Inscritos por Campeonato',
-    filters: [
-      { name: 'id_campeonato', label: 'ID do Campeonato', type: 'number', required: true }
-    ],
-    buildUrl: (vals) => `${API_BASE}/relatorios/inscritos-campeonato/${vals.id_campeonato}`
-  },
-  historico_usuario: {
-    label: 'Histórico de Partidas por Usuário',
-    filters: [
-      { name: 'id_usuario', label: 'ID do Usuário', type: 'number', required: true }
-    ],
-    buildUrl: (vals) => `${API_BASE}/relatorios/historico-usuario/${vals.id_usuario}`
-  },
-  quadras_mais_utilizadas: {
-    label: 'Quadras Mais Utilizadas',
-    filters: [],
-    buildUrl: () => `${API_BASE}/relatorios/quadras-mais-utilizadas`
-  }
-};
-
-let currentReport = "campeonatos_disponiveis";
-
-function changeReport() {
-  currentReport = document.getElementById("reportSelector").value;
-  const config = reportConfigs[currentReport];
-
-  let filtersHtml = "";
-  config.filters.forEach(f => {
-    filtersHtml += `
-      <div>
-        <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">${f.label}</label>
-        <input type="${f.type}" id="report_filter_${f.name}" class="p-2 border rounded text-sm focus:outline-blue-500">
-      </div>`;
-  });
-  document.getElementById("reportFilters").innerHTML = filtersHtml;
-
-  document.getElementById("reportTableHeader").innerHTML = "";
-  document.getElementById("reportTableBody").innerHTML = "";
-  document.getElementById("reportMsg").innerText = "";
-}
-
-async function runReport() {
-  const config = reportConfigs[currentReport];
-  const msgEl = document.getElementById("reportMsg");
-  msgEl.innerText = "";
-
-  // Coleta valores dos filtros e valida os obrigatórios
-  const vals = {};
-  for (const f of config.filters) {
-    const el = document.getElementById(`report_filter_${f.name}`);
-    vals[f.name] = el.value;
-    if (f.required && !el.value) {
-      msgEl.innerText = `Preencha "${f.label}" para buscar.`;
-      return;
-    }
-  }
-
-  const url = config.buildUrl(vals);
-
-  try {
-    const res = await fetch(url);
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      msgEl.innerText = "Erro: " + (err.error || res.status);
-      document.getElementById("reportTableHeader").innerHTML = "";
-      document.getElementById("reportTableBody").innerHTML = "";
-      return;
-    }
-    const data = await res.json();
-    renderReportTable(data);
-    msgEl.innerText = `${data.length} registro(s) encontrado(s).`;
-  } catch (e) {
-    msgEl.innerText = "Erro ao buscar relatório: " + e.message;
-  }
-}
-
-function renderReportTable(data) {
-  const headerEl = document.getElementById("reportTableHeader");
-  const bodyEl = document.getElementById("reportTableBody");
-
-  if (!data || data.length === 0) {
-    headerEl.innerHTML = "";
-    bodyEl.innerHTML = `<tr><td class="text-center py-8 text-gray-400">Nenhum registro encontrado.</td></tr>`;
-    return;
-  }
-
-  const columns = Object.keys(data[0]);
-
-  let headerHtml = "";
-  columns.forEach(col => {
-    const label = col.replace(/_/g, ' ').toUpperCase();
-    headerHtml += `<th class="px-5 py-3 border-b-2 border-gray-200">${label}</th>`;
-  });
-  headerEl.innerHTML = headerHtml;
-
-  let bodyHtml = "";
-  data.forEach(row => {
-    bodyHtml += `<tr class="border-b border-gray-200 bg-white hover:bg-gray-50">`;
-    columns.forEach(col => {
-      const val = row[col] !== null && row[col] !== undefined ? row[col] : '';
-      bodyHtml += `<td class="px-5 py-4">${val}</td>`;
-    });
-    bodyHtml += `</tr>`;
-  });
-  bodyEl.innerHTML = bodyHtml;
-}
-
-// Carga inicial
-window.onload = () => {
-  loadData();
-  changeReport();
-};
-</script>
-</body>
-</html>
+    document.getElementById("e
