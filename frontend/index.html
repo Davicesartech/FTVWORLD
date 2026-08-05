@@ -1,229 +1,438 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FutWorld Admin - CRUD Acadêmico</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FutWorld Admin - CRUD Acadêmico</title>
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 </head>
 <body class="bg-gray-100 font-sans">
 
-    <nav class="bg-blue-600 text-white p-4 shadow-md">
-        <div class="container mx-auto flex justify-between items-center">
-            <h1 class="text-xl font-bold tracking-wider">⚽ FUTWORLD</h1>
-            <select id="entitySelector" onchange="changeEntity()" class="bg-blue-700 text-white p-2 rounded border border-blue-500 focus:outline-none">
-                <option value="usuarios">Usuários</option>
-                <option value="campeonatos">Campeonatos</option>
-                <option value="quadras">Quadras</option>
-                <option value="inscricoes">Inscrições</option>
-                <option value="duplas">Duplas</option>
-                <option value="partidas">Partidas</option>
-                <option value="notificacoes">Notificações</option>
-            </select>
-        </div>
-    </nav>
+<nav class="bg-blue-600 text-white p-4 shadow-md">
+  <div class="container mx-auto flex flex-wrap justify-between items-center gap-3">
+    <h1 class="text-xl font-bold tracking-wider">⚽ FUTWORLD</h1>
 
-    <main class="container mx-auto mt-8 p-4">
-        <div class="flex justify-between items-center mb-6">
-            <h2 id="pageTitle" class="text-2xl font-semibold text-gray-800 uppercase">Gerenciar Usuários</h2>
-            <button onclick="openModal()" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded shadow transition">＋ Novo Registro</button>
-        </div>
+    <div class="flex items-center gap-3 flex-wrap">
+      <!-- Alternador de modo: CRUD x Relatórios -->
+      <div class="bg-blue-800 rounded p-1 flex">
+        <button id="btnModeCrud" onclick="changeMode('crud')"
+          class="px-3 py-1 rounded text-sm font-semibold bg-blue-500">CRUD</button>
+        <button id="btnModeReport" onclick="changeMode('report')"
+          class="px-3 py-1 rounded text-sm font-semibold">Relatórios</button>
+      </div>
 
-        <div class="bg-white rounded-lg shadow overflow-x-auto">
-            <table class="min-w-full leading-normal">
-                <thead>
-                    <tr id="tableHeader" class="bg-gray-200 text-gray-600 text-left text-sm uppercase tracking-wider"></tr>
-                </thead>
-                <tbody id="tableBody" class="text-gray-700 text-sm"></tbody>
-            </table>
-        </div>
-    </main>
+      <select id="entitySelector" onchange="changeEntity()"
+        class="bg-blue-700 text-white p-2 rounded border border-blue-500 focus:outline-none">
+        <option value="usuarios">Usuários</option>
+        <option value="campeonatos">Campeonatos</option>
+        <option value="quadras">Quadras</option>
+        <option value="inscricoes">Inscrições</option>
+        <option value="duplas">Duplas</option>
+        <option value="partidas">Partidas</option>
+        <option value="notificacoes">Notificações</option>
+      </select>
+    </div>
+  </div>
+</nav>
 
-    <div id="crudModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-lg shadow-lg w-full max-w-md overflow-hidden">
-            <header class="bg-gray-100 p-4 border-b flex justify-between items-center">
-                <h3 id="modalTitle" class="text-lg font-bold text-gray-700">Adicionar Registro</h3>
-                <button onclick="closeModal()" class="text-gray-500 hover:text-gray-700 text-xl font-bold">&times;</button>
-            </header>
-            <form id="entityForm" onsubmit="saveData(event)" class="p-4 space-y-4">
-                <input type="hidden" id="row_id">
-                <div id="formFields" class="space-y-3"></div>
-                <div class="flex justify-end space-x-2 pt-2 border-t">
-                    <button type="button" onclick="closeModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded">Cancelar</button>
-                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">Salvar</button>
-                </div>
-            </form>
-        </div>
+<main class="container mx-auto mt-8 p-4">
+
+  <!-- ============ SEÇÃO CRUD (existente) ============ -->
+  <section id="crudSection">
+    <div class="flex justify-between items-center mb-6">
+      <h2 id="pageTitle" class="text-2xl font-semibold text-gray-800 uppercase">Gerenciar Usuários</h2>
+      <button onclick="openModal()" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded shadow transition">＋ Novo Registro</button>
     </div>
 
-    <script>
-        const API_BASE = "http://127.0.0.1:5000/api";
+    <div class="bg-white rounded-lg shadow overflow-x-auto">
+      <table class="min-w-full leading-normal">
+        <thead>
+          <tr id="tableHeader" class="bg-gray-200 text-gray-600 text-left text-sm uppercase tracking-wider"></tr>
+        </thead>
+        <tbody id="tableBody" class="text-gray-700 text-sm"></tbody>
+      </table>
+    </div>
+  </section>
 
-        // Definição dos campos de cada Model para construção dinâmica da UI
-        const schemas = {
-            usuarios: [
-                { name: 'nome', label: 'Nome', type: 'text' },
-                { name: 'email', label: 'E-mail', type: 'email' },
-                { name: 'senha', label: 'Senha', type: 'password' },
-                { name: 'telefone', label: 'Telefone', type: 'text' },
-                { name: 'nivel', label: 'Nível', type: 'text' },
-                { name: 'cidade', label: 'Cidade', type: 'text' }
-            ],
-            campeonatos: [
-                { name: 'nome', label: 'Nome', type: 'text' },
-                { name: 'descricao', label: 'Descrição', type: 'text' },
-                { name: 'data', label: 'Data', type: 'date' },
-                { name: 'horario', label: 'Horário (HH:MM)', type: 'text' },
-                { name: 'categoria', label: 'Categoria', type: 'text' },
-                { name: 'nivel', label: 'Nível', type: 'text' },
-                { name: 'vagas_total', label: 'Vagas Totais', type: 'number' },
-                { name: 'vagas_disponiveis', label: 'Vagas Disponíveis', type: 'number' },
-                { name: 'status', label: 'Status', type: 'text' }
-            ],
-            quadras: [
-                { name: 'nome', label: 'Nome da Quadra', type: 'text' },
-                { name: 'endereco', label: 'Endereço', type: 'text' },
-                { name: 'cidade', label: 'Cidade', type: 'text' },
-                { name: 'numero_quadras', label: 'Nº de Quadras', type: 'number' },
-                { name: 'contato', label: 'Contato', type: 'text' },
-                { name: 'id_responsavel', label: 'ID Responsável (User)', type: 'number' }
-            ],
-            inscricoes: [
-                { name: 'status', label: 'Status', type: 'text' },
-                { name: 'data_inscricao', label: 'Data de Inscrição', type: 'date' },
-                { name: 'id_campeonato', label: 'ID Campeonato', type: 'number' },
-                { name: 'id_dupla', label: 'ID Dupla', type: 'number' }
-            ],
-            duplas: [
-                { name: 'id_usuario1', label: 'ID Usuário 1', type: 'number' },
-                { name: 'id_usuario2', label: 'ID Usuário 2', type: 'number' },
-                { name: 'categoria', label: 'Categoria', type: 'text' }
-            ],
-            partidas: [
-                { name: 'fase', label: 'Fase', type: 'text' },
-                { name: 'placar_dupla1', label: 'Placar Dupla 1', type: 'number' },
-                { name: 'placar_dupla2', label: 'Placar Dupla 2', type: 'number' },
-                { name: 'data_hora', label: 'Data/Hora', type: 'datetime-local' },
-                { name: 'status', label: 'Status', type: 'text' },
-                { name: 'id_campeonato', label: 'ID Campeonato', type: 'number' },
-                { name: 'id_dupla1', label: 'ID Dupla 1', type: 'number' }
-            ],
-            notificacoes: [
-                { name: 'mensagem', label: 'Mensagem', type: 'text' },
-                { name: 'lida', label: 'Lida (0=Não, 1=Sim)', type: 'number' },
-                { name: 'data_envio', label: 'Data de Envio', type: 'date' },
-                { name: 'id_usuario', label: 'ID Usuário', type: 'number' }
-            ]
-        };
+  <!-- ============ SEÇÃO RELATÓRIOS (nova) ============ -->
+  <section id="reportSection" class="hidden">
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-2xl font-semibold text-gray-800 uppercase">Relatórios</h2>
+    </div>
 
-        let currentEntity = "usuarios";
+    <div class="bg-white rounded-lg shadow p-4 mb-6">
+      <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Selecione o relatório</label>
+      <select id="reportSelector" onchange="changeReport()"
+        class="w-full md:w-96 p-2 border rounded text-sm focus:outline-blue-500 mb-4">
+        <option value="campeonatos_disponiveis">Campeonatos Disponíveis</option>
+        <option value="ranking_duplas">Ranking de Duplas</option>
+        <option value="inscritos_campeonato">Inscritos por Campeonato</option>
+        <option value="historico_usuario">Histórico de Partidas por Usuário</option>
+        <option value="quadras_mais_utilizadas">Quadras Mais Utilizadas</option>
+      </select>
 
-        function changeEntity() {
-            currentEntity = document.getElementById("entitySelector").value;
-            document.getElementById("pageTitle").innerText = "Gerenciar " + currentEntity;
-            loadData();
-        }
+      <div id="reportFilters" class="flex flex-wrap gap-3 items-end mb-2"></div>
 
-        async function loadData() {
-            const res = await fetch(`${API_BASE}/${currentEntity}`);
-            const list = await res.json();
+      <button onclick="runReport()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow transition text-sm">
+        🔍 Buscar
+      </button>
+      <span id="reportMsg" class="text-sm text-gray-500 ml-3"></span>
+    </div>
 
-            // Render Headers
-            const fields = schemas[currentEntity];
-            let headerHtml = `<th class="px-5 py-3 border-b-2 border-gray-200">ID</th>`;
-            fields.forEach(f => headerHtml += `<th class="px-5 py-3 border-b-2 border-gray-200">${f.label}</th>`);
-            headerHtml += `<th class="px-5 py-3 border-b-2 border-gray-200 text-center">Ações</th>`;
-            document.getElementById("tableHeader").innerHTML = headerHtml;
+    <div class="bg-white rounded-lg shadow overflow-x-auto">
+      <table class="min-w-full leading-normal">
+        <thead>
+          <tr id="reportTableHeader" class="bg-gray-200 text-gray-600 text-left text-sm uppercase tracking-wider"></tr>
+        </thead>
+        <tbody id="reportTableBody" class="text-gray-700 text-sm"></tbody>
+      </table>
+    </div>
+  </section>
 
-            // Render Rows
-            let bodyHtml = "";
-            list.forEach(row => {
-                bodyHtml += `<tr class="border-b border-gray-200 bg-white hover:bg-gray-50">`;
-                bodyHtml += `<td class="px-5 py-4 font-bold">${row.id}</td>`;
-                fields.forEach(f => {
-                    let val = row[f.name] !== null ? row[f.name] : '';
-                    bodyHtml += `<td class="px-5 py-4">${val}</td>`;
-                });
-                bodyHtml += `
-                    <td class="px-5 py-4 text-center space-x-2">
-                        <button onclick="editRow(${row.id})" class="text-blue-600 hover:text-blue-900 font-semibold">Editar</button>
-                        <button onclick="deleteRow(${row.id})" class="text-red-600 hover:text-red-900 font-semibold">Excluir</button>
-                    </td>
-                </tr>`;
-            });
-            document.getElementById("tableBody").innerHTML = bodyHtml || `<tr><td colspan="100%" class="text-center py-8 text-gray-400">Nenhum registro encontrado.</td></tr>`;
-        }
+</main>
 
-        function openModal(isEdit = false) {
-            document.getElementById("modalTitle").innerText = isEdit ? "Editar Registro" : "Adicionar Registro";
-            const fields = schemas[currentEntity];
-            let fieldsHtml = "";
+<div id="crudModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-lg shadow-lg w-full max-w-md overflow-hidden">
+    <header class="bg-gray-100 p-4 border-b flex justify-between items-center">
+      <h3 id="modalTitle" class="text-lg font-bold text-gray-700">Adicionar Registro</h3>
+      <button onclick="closeModal()" class="text-gray-500 hover:text-gray-700 text-xl font-bold">&times;</button>
+    </header>
+    <form id="entityForm" onsubmit="saveData(event)" class="p-4 space-y-4">
+      <input type="hidden" id="row_id">
+      <div id="formFields" class="space-y-3"></div>
+      <div class="flex justify-end space-x-2 pt-2 border-t">
+        <button type="button" onclick="closeModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded">Cancelar</button>
+        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">Salvar</button>
+      </div>
+    </form>
+  </div>
+</div>
 
-            fields.forEach(f => {
-                fieldsHtml += `
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">${f.label}</label>
-                        <input type="${f.type}" id="field_${f.name}" class="w-full p-2 border rounded text-sm focus:outline-blue-500">
-                    </div>`;
-            });
-            document.getElementById("formFields").innerHTML = fieldsHtml;
-            if (!isEdit) {
-                document.getElementById("row_id").value = "";
-                document.getElementById("entityForm").reset();
-            }
-            document.getElementById("crudModal").classList.remove("hidden");
-        }
+<script>
+const API_BASE = "http://127.0.0.1:5000/api";
 
-        function closeModal() {
-            document.getElementById("crudModal").classList.add("hidden");
-        }
+// Definição dos campos de cada Model para construção dinâmica da UI
+const schemas = {
+  usuarios: [
+    { name: 'nome', label: 'Nome', type: 'text' },
+    { name: 'email', label: 'E-mail', type: 'email' },
+    { name: 'senha', label: 'Senha', type: 'password' },
+    { name: 'telefone', label: 'Telefone', type: 'text' },
+    { name: 'nivel', label: 'Nível', type: 'text' },
+    { name: 'cidade', label: 'Cidade', type: 'text' }
+  ],
+  campeonatos: [
+    { name: 'nome', label: 'Nome', type: 'text' },
+    { name: 'descricao', label: 'Descrição', type: 'text' },
+    { name: 'data', label: 'Data', type: 'date' },
+    { name: 'horario', label: 'Horário (HH:MM)', type: 'text' },
+    { name: 'categoria', label: 'Categoria', type: 'text' },
+    { name: 'nivel', label: 'Nível', type: 'text' },
+    { name: 'vagas_total', label: 'Vagas Totais', type: 'number' },
+    { name: 'vagas_disponiveis', label: 'Vagas Disponíveis', type: 'number' },
+    { name: 'status', label: 'Status', type: 'text' }
+  ],
+  quadras: [
+    { name: 'nome', label: 'Nome da Quadra', type: 'text' },
+    { name: 'endereco', label: 'Endereço', type: 'text' },
+    { name: 'cidade', label: 'Cidade', type: 'text' },
+    { name: 'numero_quadras', label: 'Nº de Quadras', type: 'number' },
+    { name: 'contato', label: 'Contato', type: 'text' },
+    { name: 'id_responsavel', label: 'ID Responsável (User)', type: 'number' }
+  ],
+  inscricoes: [
+    { name: 'status', label: 'Status', type: 'text' },
+    { name: 'data_inscricao', label: 'Data de Inscrição', type: 'date' },
+    { name: 'id_campeonato', label: 'ID Campeonato', type: 'number' },
+    { name: 'id_dupla', label: 'ID Dupla', type: 'number' }
+  ],
+  duplas: [
+    { name: 'id_usuario1', label: 'ID Usuário 1', type: 'number' },
+    { name: 'id_usuario2', label: 'ID Usuário 2', type: 'number' },
+    { name: 'categoria', label: 'Categoria', type: 'text' }
+  ],
+  partidas: [
+    { name: 'fase', label: 'Fase', type: 'text' },
+    { name: 'placar_dupla1', label: 'Placar Dupla 1', type: 'number' },
+    { name: 'placar_dupla2', label: 'Placar Dupla 2', type: 'number' },
+    { name: 'data_hora', label: 'Data/Hora', type: 'datetime-local' },
+    { name: 'status', label: 'Status', type: 'text' },
+    { name: 'id_campeonato', label: 'ID Campeonato', type: 'number' },
+    { name: 'id_dupla1', label: 'ID Dupla 1', type: 'number' }
+  ],
+  notificacoes: [
+    { name: 'mensagem', label: 'Mensagem', type: 'text' },
+    { name: 'lida', label: 'Lida (0=Não, 1=Sim)', type: 'number' },
+    { name: 'data_envio', label: 'Data de Envio', type: 'date' },
+    { name: 'id_usuario', label: 'ID Usuário', type: 'number' }
+  ]
+};
 
-        async function editRow(id) {
-            const res = await fetch(`${API_BASE}/${currentEntity}/${id}`);
-            const data = await res.json();
-            openModal(true);
-            document.getElementById("row_id").value = id;
+let currentEntity = "usuarios";
 
-            schemas[currentEntity].forEach(f => {
-                let val = data[f.name];
-                if (f.type === 'datetime-local' && val) val = val.substring(0, 16);
-                document.getElementById(`field_${f.name}`).value = val !== null ? val : '';
-            });
-        }
+// ===================== MODO (CRUD x Relatórios) =====================
+function changeMode(mode) {
+  const crudBtn = document.getElementById('btnModeCrud');
+  const reportBtn = document.getElementById('btnModeReport');
+  const crudSection = document.getElementById('crudSection');
+  const reportSection = document.getElementById('reportSection');
+  const entitySelector = document.getElementById('entitySelector');
 
-        async function saveData(e) {
-            e.preventDefault();
-            const id = document.getElementById("row_id").value;
-            const payload = {};
+  if (mode === 'crud') {
+    crudSection.classList.remove('hidden');
+    reportSection.classList.add('hidden');
+    entitySelector.classList.remove('hidden');
+    crudBtn.classList.add('bg-blue-500');
+    reportBtn.classList.remove('bg-blue-500');
+    loadData();
+  } else {
+    crudSection.classList.add('hidden');
+    reportSection.classList.remove('hidden');
+    entitySelector.classList.add('hidden');
+    reportBtn.classList.add('bg-blue-500');
+    crudBtn.classList.remove('bg-blue-500');
+    changeReport();
+  }
+}
 
-            schemas[currentEntity].forEach(f => {
-                let val = document.getElementById(`field_${f.name}`).value;
-                if (f.type === 'number') val = val ? Number(val) : null;
-                payload[f.name] = val;
-            });
+// ===================== CRUD (existente) =====================
+function changeEntity() {
+  currentEntity = document.getElementById("entitySelector").value;
+  document.getElementById("pageTitle").innerText = "Gerenciar " + currentEntity;
+  loadData();
+}
 
-            const method = id ? "PUT" : "POST";
-            const url = id ? `${API_BASE}/${currentEntity}/${id}` : `${API_BASE}/${currentEntity}`;
+async function loadData() {
+  const res = await fetch(`${API_BASE}/${currentEntity}`);
+  const list = await res.json();
 
-            await fetch(url, {
-                method: method,
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            });
+  const fields = schemas[currentEntity];
+  let headerHtml = `<th class="px-5 py-3 border-b-2 border-gray-200">ID</th>`;
+  fields.forEach(f => headerHtml += `<th class="px-5 py-3 border-b-2 border-gray-200">${f.label}</th>`);
+  headerHtml += `<th class="px-5 py-3 border-b-2 border-gray-200 text-center">Ações</th>`;
+  document.getElementById("tableHeader").innerHTML = headerHtml;
 
-            closeModal();
-            loadData();
-        }
+  let bodyHtml = "";
+  list.forEach(row => {
+    bodyHtml += `<tr class="border-b border-gray-200 bg-white hover:bg-gray-50">`;
+    bodyHtml += `<td class="px-5 py-4 font-bold">${row.id}</td>`;
+    fields.forEach(f => {
+      let val = row[f.name] !== null ? row[f.name] : '';
+      bodyHtml += `<td class="px-5 py-4">${val}</td>`;
+    });
+    bodyHtml += `
+      <td class="px-5 py-4 text-center space-x-2">
+        <button onclick="editRow(${row.id})" class="text-blue-600 hover:text-blue-900 font-semibold">Editar</button>
+        <button onclick="deleteRow(${row.id})" class="text-red-600 hover:text-red-900 font-semibold">Excluir</button>
+      </td>
+    </tr>`;
+  });
+  document.getElementById("tableBody").innerHTML = bodyHtml || `<tr><td colspan="100%" class="text-center py-8 text-gray-400">Nenhum registro encontrado.</td></tr>`;
+}
 
-        async function deleteRow(id) {
-            if (confirm("Tem certeza que deseja remover este registro?")) {
-                await fetch(`${API_BASE}/${currentEntity}/${id}`, { method: "DELETE" });
-                loadData();
-            }
-        }
+function openModal(isEdit = false) {
+  document.getElementById("modalTitle").innerText = isEdit ? "Editar Registro" : "Adicionar Registro";
+  const fields = schemas[currentEntity];
+  let fieldsHtml = "";
+  fields.forEach(f => {
+    fieldsHtml += `
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">${f.label}</label>
+        <input type="${f.type}" id="field_${f.name}" class="w-full p-2 border rounded text-sm focus:outline-blue-500">
+      </div>`;
+  });
+  document.getElementById("formFields").innerHTML = fieldsHtml;
 
-        // Carga inicial
-        window.onload = loadData;
-    </script>
+  if (!isEdit) {
+    document.getElementById("row_id").value = "";
+    document.getElementById("entityForm").reset();
+  }
+  document.getElementById("crudModal").classList.remove("hidden");
+}
+
+function closeModal() {
+  document.getElementById("crudModal").classList.add("hidden");
+}
+
+async function editRow(id) {
+  const res = await fetch(`${API_BASE}/${currentEntity}/${id}`);
+  const data = await res.json();
+  openModal(true);
+  document.getElementById("row_id").value = id;
+  schemas[currentEntity].forEach(f => {
+    let val = data[f.name];
+    if (f.type === 'datetime-local' && val) val = val.substring(0, 16);
+    document.getElementById(`field_${f.name}`).value = val !== null ? val : '';
+  });
+}
+
+async function saveData(e) {
+  e.preventDefault();
+  const id = document.getElementById("row_id").value;
+  const payload = {};
+  schemas[currentEntity].forEach(f => {
+    let val = document.getElementById(`field_${f.name}`).value;
+    if (f.type === 'number') val = val ? Number(val) : null;
+    payload[f.name] = val;
+  });
+
+  const method = id ? "PUT" : "POST";
+  const url = id ? `${API_BASE}/${currentEntity}/${id}` : `${API_BASE}/${currentEntity}`;
+
+  await fetch(url, {
+    method: method,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+
+  closeModal();
+  loadData();
+}
+
+async function deleteRow(id) {
+  if (confirm("Tem certeza que deseja remover este registro?")) {
+    await fetch(`${API_BASE}/${currentEntity}/${id}`, { method: "DELETE" });
+    loadData();
+  }
+}
+
+// ===================== RELATÓRIOS (novo) =====================
+// Cada relatório aponta para uma rota da API (Controller -> Service -> Repository -> procedure).
+// As colunas da tabela são geradas dinamicamente a partir do JSON retornado,
+// então não é preciso saber de antemão os nomes exatos das colunas de cada procedure.
+const reportConfigs = {
+  campeonatos_disponiveis: {
+    label: 'Campeonatos Disponíveis',
+    filters: [
+      { name: 'categoria', label: 'Categoria (opcional)', type: 'text', required: false },
+      { name: 'nivel', label: 'Nível (opcional)', type: 'text', required: false }
+    ],
+    buildUrl: (vals) => {
+      const params = new URLSearchParams();
+      if (vals.categoria) params.append('categoria', vals.categoria);
+      if (vals.nivel) params.append('nivel', vals.nivel);
+      const qs = params.toString();
+      return `${API_BASE}/relatorios/campeonatos-disponiveis${qs ? '?' + qs : ''}`;
+    }
+  },
+  ranking_duplas: {
+    label: 'Ranking de Duplas',
+    filters: [],
+    buildUrl: () => `${API_BASE}/relatorios/ranking-duplas`
+  },
+  inscritos_campeonato: {
+    label: 'Inscritos por Campeonato',
+    filters: [
+      { name: 'id_campeonato', label: 'ID do Campeonato', type: 'number', required: true }
+    ],
+    buildUrl: (vals) => `${API_BASE}/relatorios/inscritos-campeonato/${vals.id_campeonato}`
+  },
+  historico_usuario: {
+    label: 'Histórico de Partidas por Usuário',
+    filters: [
+      { name: 'id_usuario', label: 'ID do Usuário', type: 'number', required: true }
+    ],
+    buildUrl: (vals) => `${API_BASE}/relatorios/historico-usuario/${vals.id_usuario}`
+  },
+  quadras_mais_utilizadas: {
+    label: 'Quadras Mais Utilizadas',
+    filters: [],
+    buildUrl: () => `${API_BASE}/relatorios/quadras-mais-utilizadas`
+  }
+};
+
+let currentReport = "campeonatos_disponiveis";
+
+function changeReport() {
+  currentReport = document.getElementById("reportSelector").value;
+  const config = reportConfigs[currentReport];
+
+  let filtersHtml = "";
+  config.filters.forEach(f => {
+    filtersHtml += `
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">${f.label}</label>
+        <input type="${f.type}" id="report_filter_${f.name}" class="p-2 border rounded text-sm focus:outline-blue-500">
+      </div>`;
+  });
+  document.getElementById("reportFilters").innerHTML = filtersHtml;
+
+  document.getElementById("reportTableHeader").innerHTML = "";
+  document.getElementById("reportTableBody").innerHTML = "";
+  document.getElementById("reportMsg").innerText = "";
+}
+
+async function runReport() {
+  const config = reportConfigs[currentReport];
+  const msgEl = document.getElementById("reportMsg");
+  msgEl.innerText = "";
+
+  // Coleta valores dos filtros e valida os obrigatórios
+  const vals = {};
+  for (const f of config.filters) {
+    const el = document.getElementById(`report_filter_${f.name}`);
+    vals[f.name] = el.value;
+    if (f.required && !el.value) {
+      msgEl.innerText = `Preencha "${f.label}" para buscar.`;
+      return;
+    }
+  }
+
+  const url = config.buildUrl(vals);
+
+  try {
+    const res = await fetch(url);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      msgEl.innerText = "Erro: " + (err.error || res.status);
+      document.getElementById("reportTableHeader").innerHTML = "";
+      document.getElementById("reportTableBody").innerHTML = "";
+      return;
+    }
+    const data = await res.json();
+    renderReportTable(data);
+    msgEl.innerText = `${data.length} registro(s) encontrado(s).`;
+  } catch (e) {
+    msgEl.innerText = "Erro ao buscar relatório: " + e.message;
+  }
+}
+
+function renderReportTable(data) {
+  const headerEl = document.getElementById("reportTableHeader");
+  const bodyEl = document.getElementById("reportTableBody");
+
+  if (!data || data.length === 0) {
+    headerEl.innerHTML = "";
+    bodyEl.innerHTML = `<tr><td class="text-center py-8 text-gray-400">Nenhum registro encontrado.</td></tr>`;
+    return;
+  }
+
+  const columns = Object.keys(data[0]);
+
+  let headerHtml = "";
+  columns.forEach(col => {
+    const label = col.replace(/_/g, ' ').toUpperCase();
+    headerHtml += `<th class="px-5 py-3 border-b-2 border-gray-200">${label}</th>`;
+  });
+  headerEl.innerHTML = headerHtml;
+
+  let bodyHtml = "";
+  data.forEach(row => {
+    bodyHtml += `<tr class="border-b border-gray-200 bg-white hover:bg-gray-50">`;
+    columns.forEach(col => {
+      const val = row[col] !== null && row[col] !== undefined ? row[col] : '';
+      bodyHtml += `<td class="px-5 py-4">${val}</td>`;
+    });
+    bodyHtml += `</tr>`;
+  });
+  bodyEl.innerHTML = bodyHtml;
+}
+
+// Carga inicial
+window.onload = () => {
+  loadData();
+  changeReport();
+};
+</script>
 </body>
 </html>
