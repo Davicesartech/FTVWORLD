@@ -96,6 +96,6 @@ Todas as entidades acima possuem o mesmo padrão de rotas REST (substitua `{enti
    - Davi César
    - Bernardo Ribeiro
    - Bernardo Santana
-   - Sophia Gomes
+   - Sophia Rezende
    - Rhayan Prates
    - Pedro Temponi
