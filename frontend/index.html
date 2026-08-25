@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FutWorld Admin - CRUD Acadêmico</title>
+    <!-- Tailwind CSS via CDN: framework de estilização utilitária, evita escrever CSS manual -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-gray-100 font-sans">
+
+    <!-- ===================================================================
+         BARRA DE NAVEGAÇÃO
+         Contém o seletor que troca entre as entidades do CRUD e a
+         seção de Relatórios (funcionalidades avançadas).
+    ==================================================================== -->
+    <nav class="bg-blue-600 text-white p-4 shadow-md">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-bold tracking-wider">⚽ FUTWORLD</h1>
+
+            <!-- Ao trocar a opção, chama changeEntityWithReports(), que decide
+                 se mostra a tela de CRUD normal ou a tela de Relatórios -->
+            <select id="entitySelector" onchange="changeEntityWithReports()"
+                    class="bg-blue-700 text-white p-2 rounded border border-blue-500 focus:outline-none">
+                <option value="usuarios">Usuários</option>
+                <option value="campeonatos">Campeonatos</option>
+                <option value="quadras">Quadras</option>
+                <option value="inscricoes">Inscrições</option>
+                <option value="duplas">Duplas</option>
+                <option value="partidas">Partidas</option>
+                <option value="notificacoes">Notificações</option>
+                <option value="relatorios">📊 Relatórios</option>
+            </select>
+        </div>
+    </nav>
+
+    <main class="container mx-auto mt-8 p-4">
+
+        <!-- ===============================================================
+             SEÇÃO 1: TELA DE CRUD (criar, listar, editar, excluir)
+             Fica visível por padrão. É escondida quando o usuário
+             seleciona "Relatórios" no menu.
+        ================================================================ -->
+        <div id="crudSection">
+            <div class="flex justify-between items-center mb-6">
+                <h2 id="pageTitle" class="text-2xl font-semibold text-gray-800 uppercase">Gerenciar Usuários</h2>
+                <button onclick="openModal()" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded shadow transition">＋ Novo Registro</button>
+            </div>
+
+            <div class="bg-white rounded-lg shadow overflow-x-auto">
+                <table class="min-w-full leading-normal">
+                    <thead>
+                        <tr id="tableHeader" class="bg-gray-200 text-gray-600 text-left text-sm uppercase tracking-wider"></tr>
+                    </thead>
+                    <tbody id="tableBody" class="text-gray-700 text-sm"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ===============================================================
+             SEÇÃO 2: TELA DE RELATÓRIOS (funcionalidades avançadas)
+             Fica ESCONDIDA por padrão (classe "hidden"). Aparece quando
+             o usuário seleciona "📊 Relatórios" no menu.
+
+             Cada botão chama uma das 5 rotas da API que acessam as
+             procedures no banco de dados (via Repository -> Service ->
+             Controller no backend).
+        ================================================================ -->
+        <div id="reportsSection" class="hidden">
+            <h2 class="text-2xl font-semibold text-gray-800 uppercase mb-4">📊 Relatórios</h2>
+
+            <div class="bg-white rounded-lg shadow p-4 mb-6 space-y-4">
+
+                <!-- Botões: cada um chama loadReport() com o nome da rota da API -->
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="loadReport('campeonatos-disponiveis')" class="bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-2 rounded text-sm">Campeonatos Disponíveis</button>
+                    <button onclick="loadReport('ranking-duplas')" class="bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-2 rounded text-sm">Ranking de Duplas</button>
+                    <button onclick="loadReport('inscritos-campeonato')" class="bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-2 rounded text-sm">Inscritos de um Campeonato</button>
+                    <button onclick="loadReport('historico-usuario')" class="bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-2 rounded text-sm">Histórico de Usuário</button>
+                    <button onclick="loadReport('quadras-mais-utilizadas')" class="bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-2 rounded text-sm">Quadras Mais Utilizadas</button>
+                </div>
+
+                <!-- Filtros dinâmicos: só aparecem para os relatórios que precisam
+                     de um parâmetro (ex: ID do campeonato, categoria) -->
+                <div id="reportFilters" class="flex flex-wrap gap-2 items-end"></div>
+            </div>
+
+            <!-- Tabela genérica de resultado: as colunas mudam dinamicamente
+                 de acordo com o que a procedure retornar -->
+            <div class="bg-white rounded-lg shadow overflow-x-auto">
+                <table class="min-w-full leading-normal">
+                    <thead>
+                        <tr id="reportTableHeader" class="bg-gray-200 text-gray-600 text-left text-sm uppercase tracking-wider"></tr>
+                    </thead>
+                    <tbody id="reportTableBody" class="text-gray-700 text-sm"></tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- ===================================================================
+         MODAL (janela flutuante) de cadastro/edição do CRUD
+    ==================================================================== -->
+    <div id="crudModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-md overflow-hidden">
+            <header class="bg-gray-100 p-4 border-b flex justify-between items-center">
+                <h3 id="modalTitle" class="text-lg font-bold text-gray-700">Adicionar Registro</h3>
+                <button onclick="closeModal()" class="text-gray-500 hover:text-gray-700 text-xl font-bold">&times;</button>
+            </header>
+            <form id="entityForm" onsubmit="saveData(event)" class="p-4 space-y-4">
+                <input type="hidden" id="row_id">
+                <div id="formFields" class="space-y-3"></div>
+                <div class="flex justify-end space-x-2 pt-2 border-t">
+                    <button type="button" onclick="closeModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded">Cancelar</button>
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Endereço base da API Flask. Precisa do backend rodando (python app.py)
+        // para que qualquer coisa nesta página funcione.
+        const API_BASE = "http://127.0.0.1:5000/api";
+
+        // =================================================================
+        // SCHEMAS: define os campos de cada Model, usados para montar
+        // automaticamente a tabela e o formulário de cada entidade.
+        // Isso evita escrever HTML repetido para cada uma das 7 entidades.
+        // =================================================================
+        const schemas = {
+            usuarios: [
+                { name: 'nome', label: 'Nome', type: 'text' },
+                { name: 'email', label: 'E-mail', type: 'email' },
+                { name: 'senha', label: 'Senha', type: 'password' },
+                { name: 'telefone', label: 'Telefone', type: 'text' },
+                { name: 'nivel', label: 'Nível', type: 'text' },
+                { name: 'cidade', label: 'Cidade', type: 'text' }
+            ],
+            campeonatos: [
+                { name: 'nome', label: 'Nome', type: 'text' },
+                { name: 'descricao', label: 'Descrição', type: 'text' },
+                { name: 'data', label: 'Data', type: 'date' },
+                { name: 'horario', label: 'Horário (HH:MM)', type: 'text' },
+                { name: 'categoria', label: 'Categoria', type: 'text' },
+                { name: 'nivel', label: 'Nível', type: 'text' },
+                { name: 'vagas_total', label: 'Vagas Totais', type: 'number' },
+                { name: 'vagas_disponiveis', label: 'Vagas Disponíveis', type: 'number' },
+                { name: 'status', label: 'Status', type: 'text' }
+            ],
+            quadras: [
+                { name: 'nome', label: 'Nome da Quadra', type: 'text' },
+                { name: 'endereco', label: 'Endereço', type: 'text' },
+                { name: 'cidade', label: 'Cidade', type: 'text' },
+                { name: 'numero_quadras', label: 'Nº de Quadras', type: 'number' },
+                { name: 'contato', label: 'Contato', type: 'text' },
+                { name: 'id_responsavel', label: 'ID Responsável (User)', type: 'number' }
+            ],
+            inscricoes: [
+                { name: 'status', label: 'Status', type: 'text' },
+                { name: 'data_inscricao', label: 'Data de Inscrição', type: 'date' },
+                { name: 'id_campeonato', label: 'ID Campeonato', type: 'number' },
+                { name: 'id_dupla', label: 'ID Dupla', type: 'number' }
+            ],
+            duplas: [
+                { name: 'id_usuario1', label: 'ID Usuário 1', type: 'number' },
+                { name: 'id_usuario2', label: 'ID Usuário 2', type: 'number' },
+                { name: 'categoria', label: 'Categoria', type: 'text' }
+            ],
+            partidas: [
+                { name: 'fase', label: 'Fase', type: 'text' },
+                { name: 'placar_dupla1', label: 'Placar Dupla 1', type: 'number' },
+                { name: 'placar_dupla2', label: 'Placar Dupla 2', type: 'number' },
+                { name: 'data_hora', label: 'Data/Hora', type: 'datetime-local' },
+                { name: 'status', label: 'Status', type: 'text' },
+                { name: 'id_campeonato', label: 'ID Campeonato', type: 'number' },
+                { name: 'id_dupla1', label: 'ID Dupla 1', type: 'number' },
+                { name: 'id_dupla2', label: 'ID Dupla 2', type: 'number' },
+                { name: 'id_quadra', label: 'ID Quadra', type: 'number' }
+            ],
+            notificacoes: [
+                { name: 'mensagem', label: 'Mensagem', type: 'text' },
+                { name: 'lida', label: 'Lida (0=Não, 1=Sim)', type: 'number' },
+                { name: 'data_envio', label: 'Data de Envio', type: 'date' },
+                { name: 'id_usuario', label: 'ID Usuário', type: 'number' }
+            ]
+        };
+
+        let currentEntity = "usuarios";
+
+        // =================================================================
+        // FUNÇÃO: changeEntityWithReports()
+        // Chamada sempre que o usuário troca a opção no menu do topo.
+        // Decide se mostra a tela de CRUD normal ou a tela de Relatórios.
+        // =================================================================
+        function changeEntityWithReports() {
+            currentEntity = document.getElementById("entitySelector").value;
+
+            if (currentEntity === "relatorios") {
+                // Esconde a tela de CRUD e mostra a tela de Relatórios
+                document.getElementById("crudSection").classList.add("hidden");
+                document.getElementById("reportsSection").classList.remove("hidden");
+            } else {
+                // Esconde a tela de Relatórios e mostra a tela de CRUD normal
+                document.getElementById("reportsSection").classList.add("hidden");
+                document.getElementById("crudSection").classList.remove("hidden");
+                document.getElementById("pageTitle").innerText = "Gerenciar " + currentEntity;
+                loadData(); // recarrega os dados da entidade escolhida
+            }
+        }
+
+        // =================================================================
+        // FUNÇÕES DO CRUD BÁSICO (criar, listar, editar, excluir)
+        // =================================================================
+
+        // Busca todos os registros da entidade atual e monta a tabela
+        async function loadData() {
+            // Guarda qual entidade estava selecionada NO MOMENTO em que a
+            // busca começou. Isso evita um bug de "condição de corrida":
+            // se o usuário trocar de entidade rápido (ex: Duplas -> Partidas)
+            // antes da resposta anterior chegar, a resposta antiga não pode
+            // usar os campos da entidade nova.
+            const entidadeDaBusca = currentEntity;
+            const res = await fetch(`${API_BASE}/${entidadeDaBusca}`);
+            const list = await res.json();
+
+            // Se o usuário já trocou de entidade enquanto essa busca estava
+            // em andamento, descarta o resultado — ele é de uma tela que
+            // não está mais visível.
+            if (entidadeDaBusca !== currentEntity) return;
+
+            const fields = schemas[entidadeDaBusca];
+
+            // Monta o cabeçalho da tabela dinamicamente
+            let headerHtml = `<th class="px-5 py-3 border-b-2 border-gray-200">ID</th>`;
+            fields.forEach(f => headerHtml += `<th class="px-5 py-3 border-b-2 border-gray-200">${f.label}</th>`);
+            headerHtml += `<th class="px-5 py-3 border-b-2 border-gray-200 text-center">Ações</th>`;
+            document.getElementById("tableHeader").innerHTML = headerHtml;
+
+            // Monta cada linha da tabela
+            let bodyHtml = "";
+            list.forEach(row => {
+                bodyHtml += `<tr class="border-b border-gray-200 bg-white hover:bg-gray-50">`;
+                bodyHtml += `<td class="px-5 py-4 font-bold">${row.id}</td>`;
+                fields.forEach(f => {
+                    let val = row[f.name] !== null ? row[f.name] : '';
+                    bodyHtml += `<td class="px-5 py-4">${val}</td>`;
+                });
+                bodyHtml += `
+                    <td class="px-5 py-4 text-center space-x-2">
+                        <button onclick="editRow(${row.id})" class="text-blue-600 hover:text-blue-900 font-semibold">Editar</button>
+                        <button onclick="deleteRow(${row.id})" class="text-red-600 hover:text-red-900 font-semibold">Excluir</button>
+                    </td>
+                </tr>`;
+            });
+            document.getElementById("tableBody").innerHTML = bodyHtml || `<tr><td colspan="100%" class="text-center py-8 text-gray-400">Nenhum registro encontrado.</td></tr>`;
+        }
+
+        // Abre o modal de cadastro/edição, montando os campos do formulário
+        // dinamicamente a partir do schema da entidade atual
+        function openModal(isEdit = false) {
+            document.getElementById("modalTitle").innerText = isEdit ? "Editar Registro" : "Adicionar Registro";
+            const fields = schemas[currentEntity];
+            let fieldsHtml = "";
+            fields.forEach(f => {
+                fieldsHtml += `
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">${f.label}</label>
+                        <input type="${f.type}" id="field_${f.name}" class="w-full p-2 border rounded text-sm focus:outline-blue-500">
+                    </div>`;
+            });
+            document.getElementById("formFields").innerHTML = fieldsHtml;
+
+            if (!isEdit) {
+                document.getElementById("row_id").value = "";
+                document.getElementById("entityForm").reset();
+            }
+            document.getElementById("crudModal").classList.remove("hidden");
+        }
+
+        function closeModal() {
+            document.getElementById("crudModal").classList.add("hidden");
+        }
+
+        // Busca um registro específico pelo ID e preenche o formulário de edição
+        async function editRow(id) {
+            const res = await fetch(`${API_BASE}/${currentEntity}/${id}`);
+            const data = await res.json();
+            openModal(true);
+            document.getElementById("row_id").value = id;
+            schemas[currentEntity].forEach(f => {
+                let val = data[f.name];
+                if (f.type === 'datetime-local' && val) val = val.substring(0, 16);
+                document.getElementById(`field_${f.name}`).value = val !== null ? val : '';
+            });
+        }
+
+        // Envia os dados do formulário para a API (POST = criar, PUT = editar)
+        async function saveData(e) {
+            e.preventDefault();
+            const id = document.getElementById("row_id").value;
+            const payload = {};
+            schemas[currentEntity].forEach(f => {
+                let val = document.getElementById(`field_${f.name}`).value;
+                if (f.type === 'number') val = val ? Number(val) : null;
+                payload[f.name] = val;
+            });
+
+            const method = id ? "PUT" : "POST";
+            const url = id ? `${API_BASE}/${currentEntity}/${id}` : `${API_BASE}/${currentEntity}`;
+
+            await fetch(url, {
+                method: method,
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            closeModal();
+            loadData();
+        }
+
+        // Exclui um registro, pedindo confirmação antes
+        async function deleteRow(id) {
+            if (confirm("Tem certeza que deseja remover este registro?")) {
+                await fetch(`${API_BASE}/${currentEntity}/${id}`, { method: "DELETE" });
+                loadData();
+            }
+        }
+
+        // =================================================================
+        // FUNÇÕES DOS RELATÓRIOS (funcionalidades avançadas / procedures)
+        // =================================================================
+
+        let currentReport = null;
+
+        // Mostra os campos de filtro certos para cada relatório
+        // (alguns relatórios não precisam de filtro nenhum)
+        function renderReportFilters(reportName) {
+            const container = document.getElementById("reportFilters");
+            container.innerHTML = "";
+
+            if (reportName === "campeonatos-disponiveis") {
+                container.innerHTML = `
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Categoria</label>
+                        <input type="text" id="filtroCategoria" class="p-2 border rounded text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Nível</label>
+                        <input type="text" id="filtroNivel" class="p-2 border rounded text-sm">
+                    </div>
+                    <button onclick="fetchReport()" class="bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded text-sm">Filtrar</button>
+                `;
+            } else if (reportName === "inscritos-campeonato") {
+                container.innerHTML = `
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">ID do Campeonato</label>
+                        <input type="number" id="filtroIdCampeonato" class="p-2 border rounded text-sm" placeholder="Ex: 1">
+                    </div>
+                    <button onclick="fetchReport()" class="bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded text-sm">Buscar</button>
+                `;
+            } else if (reportName === "historico-usuario") {
+                container.innerHTML = `
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">ID do Usuário</label>
+                        <input type="number" id="filtroIdUsuario" class="p-2 border rounded text-sm" placeholder="Ex: 1">
+                    </div>
+                    <button onclick="fetchReport()" class="bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded text-sm">Buscar</button>
+                `;
+            }
+            // ranking-duplas e quadras-mais-utilizadas não precisam de filtro
+        }
+
+        // Chamada quando o usuário clica em um dos botões de relatório
+        function loadReport(reportName) {
+            currentReport = reportName;
+            renderReportFilters(reportName);
+            fetchReport();
+        }
+
+        // Monta a URL certa (com filtros/parâmetros) e busca os dados na API
+        async function fetchReport() {
+            let url = `${API_BASE}/relatorios/${currentReport}`;
+
+            if (currentReport === "campeonatos-disponiveis") {
+                const categoria = document.getElementById("filtroCategoria")?.value || "";
+                const nivel = document.getElementById("filtroNivel")?.value || "";
+                const params = new URLSearchParams();
+                if (categoria) params.append("categoria", categoria);
+                if (nivel) params.append("nivel", nivel);
+                url += "?" + params.toString();
+            } else if (currentReport === "inscritos-campeonato") {
+                const id = document.getElementById("filtroIdCampeonato")?.value;
+                if (!id) { document.getElementById("reportTableBody").innerHTML = `<tr><td class="p-4 text-gray-400">Informe o ID do campeonato.</td></tr>`; return; }
+                url += "/" + id;
+            } else if (currentReport === "historico-usuario") {
+                const id = document.getElementById("filtroIdUsuario")?.value;
+                if (!id) { document.getElementById("reportTableBody").innerHTML = `<tr><td class="p-4 text-gray-400">Informe o ID do usuário.</td></tr>`; return; }
+                url += "/" + id;
+            }
+
+            document.getElementById("reportTableBody").innerHTML = `<tr><td class="p-4 text-gray-400">Carregando...</td></tr>`;
+
+            try {
+                const res = await fetch(url);
+                const data = await res.json();
+                renderReportTable(data);
+            } catch (err) {
+                document.getElementById("reportTableBody").innerHTML = `<tr><td class="p-4 text-red-500">Erro ao carregar: ${err}</td></tr>`;
+            }
+        }
+
+        // Monta a tabela de resultado do relatório de forma genérica:
+        // as colunas são geradas a partir das chaves do primeiro objeto
+        // retornado pela API (não precisa saber de antemão quais campos
+        // cada procedure retorna)
+        function renderReportTable(data) {
+            const header = document.getElementById("reportTableHeader");
+            const body = document.getElementById("reportTableBody");
+
+            if (!Array.isArray(data) || data.length === 0) {
+                header.innerHTML = "";
+                body.innerHTML = `<tr><td class="text-center py-8 text-gray-400">Nenhum resultado encontrado.</td></tr>`;
+                return;
+            }
+
+            const columns = Object.keys(data[0]);
+            header.innerHTML = columns.map(c => `<th class="px-5 py-3 border-b-2 border-gray-200">${c}</th>`).join("");
+
+            body.innerHTML = data.map(row => {
+                const cells = columns.map(c => `<td class="px-5 py-4">${row[c] !== null && row[c] !== undefined ? row[c] : "-"}</td>`).join("");
+                return `<tr class="border-b border-gray-200 bg-white hover:bg-gray-50">${cells}</tr>`;
+            }).join("");
+        }
+
+        // Carrega os dados assim que a página abre (mostra "usuarios" por padrão)
+        window.onload = loadData;
+    </script>
+</body>
+</html>
